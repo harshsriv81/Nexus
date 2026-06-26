@@ -25,7 +25,7 @@ export default function MessageList({ messages, typingUser, isLoading, currentUs
   const groups = groupMessagesByDate(messages);
 
   return (
-    <div className="flex-1 overflow-y-auto px-3 md:pl-7 md:pr-0 py-4 flex flex-col">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 flex flex-col">
       {groups.map(({ dateLabel, messages: dayMsgs }) => (
         <div key={dateLabel}>
           {/* Date divider */}

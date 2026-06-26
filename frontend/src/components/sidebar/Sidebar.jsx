@@ -44,8 +44,8 @@ export default function Sidebar({
   return (
     <aside className={`
       relative flex flex-col h-full bg-abyss border-r border-border-faint accent-bar-top
-      w-full md:w-[300px] md:min-w-[260px]
-      ${mobileHidden ? 'hidden md:flex' : 'flex'}
+      w-full sm:w-[300px] sm:min-w-[260px]
+      ${mobileHidden ? 'hidden sm:flex' : 'flex'}
     `}>
 
       {/* ── Header ─────────────────────────────────────────────── */}

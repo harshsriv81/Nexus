@@ -73,7 +73,7 @@ function DashboardInner({ dbUser }) {
   const handleBack = () => setActiveConvo(null);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-void">
+    <div className="flex h-dvh w-screen overflow-hidden bg-void">
       {/* Sidebar: full-width on mobile, fixed 300px on md+ */}
       <Sidebar
         dbUser={dbUser}
@@ -92,7 +92,7 @@ function DashboardInner({ dbUser }) {
       {/* Chat area: full-width on mobile (hidden when no convo), flex-1 on md+ */}
       <main className={`
         flex-1 flex overflow-hidden
-        ${activeConvo ? 'flex' : 'hidden md:flex'}
+        ${activeConvo ? 'flex' : 'hidden sm:flex'}
       `}>
         {activeConvo ? (
           <ChatPanel
@@ -145,7 +145,7 @@ export default function Dashboard() {
 
   if (isSyncing || !dbUser) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-void">
+      <div className="flex h-dvh w-screen items-center justify-center bg-void">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-accent-grad flex items-center justify-center shadow-glow animate-pulse">
             <span className="text-xl">⚡</span>

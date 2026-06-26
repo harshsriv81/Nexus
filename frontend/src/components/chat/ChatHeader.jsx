@@ -12,14 +12,14 @@ export default function ChatHeader({ convo, currentUserId, onBack, onVideoCall }
     : (isOnline ? 'Online' : `Offline`);
 
   return (
-    <div className="flex items-center justify-between px-3 md:px-6 header-blur border-b border-border-faint flex-shrink-0 h-[56px] md:h-[66px]">
+    <div className="flex items-center justify-between px-3 sm:px-6 header-blur border-b border-border-faint flex-shrink-0 h-[56px] sm:h-[66px]">
       {/* Back + User info */}
-      <div className="flex items-center gap-2 md:gap-3 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         {/* Back button — mobile only */}
         {onBack && (
           <button
             onClick={onBack}
-            className="md:hidden w-8 h-8 rounded-xl flex items-center justify-center
+            className="sm:hidden w-8 h-8 rounded-xl flex items-center justify-center
                        text-text-muted hover:text-text-primary hover:bg-overlay
                        transition-all duration-150 flex-shrink-0"
           >
@@ -41,12 +41,12 @@ export default function ChatHeader({ convo, currentUserId, onBack, onVideoCall }
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
         {!convo.isGroup && (
           <button
             onClick={onVideoCall}
             title="Start Video Call"
-            className="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center
                        bg-electric/10 border border-border-accent text-electric-400
                        hover:bg-electric hover:text-white hover:border-electric hover:shadow-glow-sm
                        transition-all duration-200"
@@ -57,7 +57,7 @@ export default function ChatHeader({ convo, currentUserId, onBack, onVideoCall }
         {convo.isGroup && (
           <button
             title="Group Members"
-            className="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center
                        bg-overlay border border-border-soft text-text-muted
                        hover:bg-hover hover:text-text-primary hover:border-border-mid
                        transition-all duration-150"
@@ -67,7 +67,7 @@ export default function ChatHeader({ convo, currentUserId, onBack, onVideoCall }
         )}
         <button
           title="Conversation Info"
-          className="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center
+          className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center
                      bg-overlay border border-border-soft text-text-muted
                      hover:bg-hover hover:text-text-primary hover:border-border-mid
                      transition-all duration-150 hidden sm:flex"
