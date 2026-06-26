@@ -69,8 +69,12 @@ function DashboardInner({ dbUser }) {
     // So we expose a manual setter
   };
 
+  // On mobile, going "back" clears active convo to show sidebar
+  const handleBack = () => setActiveConvo(null);
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-void">
+      {/* Sidebar: full-width on mobile, fixed 300px on md+ */}
       <Sidebar
         dbUser={dbUser}
         isConnected={isConnected}
@@ -82,13 +86,19 @@ function DashboardInner({ dbUser }) {
         onSelectConvo={handleSelectConvo}
         onStartChat={handleStartChat}
         onCreateGroup={handleCreateGroup}
+        mobileHidden={!!activeConvo}
       />
 
-      <main className="flex-1 flex overflow-hidden">
+      {/* Chat area: full-width on mobile (hidden when no convo), flex-1 on md+ */}
+      <main className={`
+        flex-1 flex overflow-hidden
+        ${activeConvo ? 'flex' : 'hidden md:flex'}
+      `}>
         {activeConvo ? (
           <ChatPanel
             convo={activeConvo}
             currentUser={dbUser}
+            onBack={handleBack}
             onVideoCall={(otherUser) => {
               // Inject into CallContext imperatively via custom event
               window.dispatchEvent(new CustomEvent('nexus:initcall', {

@@ -4,7 +4,7 @@ import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import { useMessages } from '../../hooks/useMessages';
 
-export default function ChatPanel({ convo, currentUser, onVideoCall }) {
+export default function ChatPanel({ convo, currentUser, onBack, onVideoCall }) {
   const {
     messages,
     typingUser,
@@ -25,6 +25,7 @@ export default function ChatPanel({ convo, currentUser, onVideoCall }) {
       <ChatHeader
         convo={convo}
         currentUserId={currentUser?._id}
+        onBack={onBack}
         onVideoCall={() => {
           const other = convo.participants.find(p => p._id !== currentUser?._id);
           onVideoCall?.(other);

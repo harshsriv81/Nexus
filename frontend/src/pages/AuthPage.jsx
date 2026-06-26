@@ -14,9 +14,9 @@ export default function AuthPage() {
 
       {/* ── Aurora blobs ─────────────────────────────────── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-aurora-violet rounded-full blur-3xl animate-aurora opacity-70" />
-        <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] bg-aurora-blue rounded-full blur-3xl animate-aurora-slow opacity-50" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-aurora-green rounded-full blur-3xl animate-aurora opacity-20" />
+        <div className="absolute -top-40 -left-40 w-[300px] h-[300px] md:w-[600px] md:h-[600px] bg-aurora-violet rounded-full blur-3xl animate-aurora opacity-70" />
+        <div className="absolute -bottom-40 -right-40 w-[250px] h-[250px] md:w-[500px] md:h-[500px] bg-aurora-blue rounded-full blur-3xl animate-aurora-slow opacity-50" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] md:w-[400px] md:h-[400px] bg-aurora-green rounded-full blur-3xl animate-aurora opacity-20" />
       </div>
 
       {/* ── Grid lines ───────────────────────────────────── */}
@@ -38,7 +38,7 @@ export default function AuthPage() {
             <Zap size={30} className="text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-black tracking-tight gradient-text-white">Nexus</h1>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight gradient-text-white">Nexus</h1>
             <p className="text-sm text-text-second mt-2 font-medium">
               Real-time chat & HD video — elevated.
             </p>

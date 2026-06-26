@@ -17,6 +17,7 @@ export default function Sidebar({
   onSelectConvo,
   onStartChat,
   onCreateGroup,
+  mobileHidden = false,
 }) {
   const [query,          setQuery]          = useState('');
   const [showGroupModal, setShowGroupModal] = useState(false);
@@ -41,7 +42,11 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="relative flex flex-col w-[300px] min-w-[260px] h-full bg-abyss border-r border-border-faint accent-bar-top">
+    <aside className={`
+      relative flex flex-col h-full bg-abyss border-r border-border-faint accent-bar-top
+      w-full md:w-[300px] md:min-w-[260px]
+      ${mobileHidden ? 'hidden md:flex' : 'flex'}
+    `}>
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-border-faint flex-shrink-0">

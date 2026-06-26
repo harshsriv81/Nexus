@@ -7,7 +7,7 @@ export default function RingingPanel({ session, callStatus, onAccept, onDecline,
   const name = session.isIncoming ? session.callerName : session.targetName;
 
   return (
-    <div className="relative flex flex-col items-center px-10 py-14 text-center overflow-hidden">
+    <div className="relative flex flex-col items-center px-6 md:px-10 py-10 md:py-14 text-center overflow-hidden">
       {/* Background aurora glow */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-aurora-violet rounded-full blur-3xl opacity-50" />

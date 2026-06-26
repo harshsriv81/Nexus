@@ -6,7 +6,7 @@ export default function VideoGrid({ localVideoRef, remoteVideoRef, session, came
   const remoteName = session.isIncoming ? session.callerName : session.targetName;
 
   return (
-    <div className="grid grid-cols-2 gap-3 p-4 bg-abyss min-h-[340px]">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 p-3 md:p-4 bg-abyss min-h-[200px] md:min-h-[340px]">
       {/* Remote — main */}
       <div className="relative bg-surface rounded-2xl overflow-hidden border border-border-soft aspect-video col-span-1">
         <video

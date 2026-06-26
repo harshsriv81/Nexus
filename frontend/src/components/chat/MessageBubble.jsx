@@ -9,7 +9,7 @@ export default function MessageBubble({ msg, isOutgoing, showSenderName, isGroup
   const isRead   = msg.readBy?.length > 1;
 
   return (
-    <div className={`flex flex-col max-w-[98%] animate-fade-up
+    <div className={`flex flex-col max-w-[85%] md:max-w-[75%] animate-fade-up
       ${isOutgoing ? 'self-end items-end' : 'self-start items-start'}
       ${isGrouped ? 'mt-0.5' : 'mt-3'}
     `}>

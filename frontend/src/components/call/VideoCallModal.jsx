@@ -69,9 +69,9 @@ export default function VideoCallModal({ session, onClose }) {
   const partnerId = session.isIncoming ? session.callerId : session.targetId;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4
                     bg-void/90 backdrop-blur-heavy animate-fade-in">
-      <div className="w-full max-w-3xl bg-surface border border-border-mid rounded-3xl
+      <div className="w-full h-full md:h-auto md:max-w-3xl bg-surface border-0 md:border border-border-mid md:rounded-3xl
                       shadow-float overflow-hidden flex flex-col animate-scale-in">
 
         {/* Modal top bar */}
