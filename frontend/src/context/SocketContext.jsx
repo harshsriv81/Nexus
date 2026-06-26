@@ -1,57 +1,54 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import io from 'socket.io-client';
+import { resolveSocketUrl } from '../config/backend';
 
 const SocketContext = createContext(null);
-
-const normalizeBaseUrl = (value) => {
-  if (!value) return '';
-  return value.replace(/\/$/, '');
-};
-
-const resolveSocketUrl = () => {
-  const configuredUrl = normalizeBaseUrl(import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || '');
-
-  if (configuredUrl) {
-    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(configuredUrl)) {
-      return window.location.origin;
-    }
-
-    return configuredUrl;
-  }
-
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
-  }
-
-  return 'http://localhost:5000';
-};
 
 export function SocketProvider({ userId, children }) {
   const [socket, setSocket]           = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectError, setConnectError] = useState(null);
   const socketRef = useRef(null);
 
   useEffect(() => {
     if (!userId) return;
 
-    const newSocket = io(resolveSocketUrl(), {
+    const url = resolveSocketUrl();
+    if (!url) {
+      setConnectError('Socket URL not configured (set VITE_SOCKET_URL on Vercel).');
+      return;
+    }
+
+    const newSocket = io(url, {
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
-      timeout: 20000,
+      reconnectionDelayMax: 5000,
+      timeout: 30000,
+      withCredentials: true,
+      path: '/socket.io/',
     });
 
     socketRef.current = newSocket;
     setSocket(newSocket);
+    setConnectError(null);
 
     newSocket.on('connect', () => {
       setIsConnected(true);
+      setConnectError(null);
       newSocket.emit('register_user', userId);
     });
 
     newSocket.on('disconnect', () => setIsConnected(false));
-    newSocket.on('reconnect',  () => {
+
+    newSocket.on('connect_error', (err) => {
+      console.error('[Socket] connect_error:', err.message);
+      setConnectError(err.message);
+    });
+
+    newSocket.on('reconnect', () => {
       setIsConnected(true);
+      setConnectError(null);
       newSocket.emit('register_user', userId);
     });
 
@@ -63,7 +60,7 @@ export function SocketProvider({ userId, children }) {
   }, [userId]);
 
   return (
-    <SocketContext.Provider value={{ socket, isConnected }}>
+    <SocketContext.Provider value={{ socket, isConnected, connectError }}>
       {children}
     </SocketContext.Provider>
   );

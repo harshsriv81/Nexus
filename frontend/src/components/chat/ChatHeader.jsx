@@ -1,9 +1,10 @@
 import React from 'react';
 import { Video, Phone, Info, Users, ArrowLeft } from 'lucide-react';
 import Avatar from '../ui/Avatar';
+import { idsEqual } from '../../utils/id';
 
 export default function ChatHeader({ convo, currentUserId, onBack, onVideoCall }) {
-  const otherUser   = convo.isGroup ? null : convo.participants.find(p => p._id !== currentUserId);
+  const otherUser   = convo.isGroup ? null : convo.participants.find(p => !idsEqual(p._id, currentUserId));
   const displayName = convo.isGroup ? convo.name : (otherUser?.username || 'Chat');
   const avatarSrc   = convo.isGroup ? null : otherUser?.imageUrl;
   const isOnline    = otherUser?.isOnline;

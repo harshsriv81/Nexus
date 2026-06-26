@@ -1,21 +1,21 @@
 import { Server } from 'socket.io';
 import { User, Message, Conversation } from './models.js';
+import { createOriginChecker, corsCallback } from './cors.js';
 
 // Map of userId to socketId to route private messages & calls
 const userSocketMap = new Map();
 
 export function initSocket(server) {
-  const allowedOrigins = (process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  const isOriginAllowed = createOriginChecker();
 
   const io = new Server(server, {
     cors: {
-      origin: allowedOrigins,
+      origin: corsCallback(isOriginAllowed),
       credentials: true,
-      methods: ['GET', 'POST']
-    }
+      methods: ['GET', 'POST'],
+    },
+    pingTimeout: 60000,
+    pingInterval: 25000,
   });
 
   io.on('connection', (socket) => {

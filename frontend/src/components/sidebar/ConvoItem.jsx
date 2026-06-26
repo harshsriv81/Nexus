@@ -1,11 +1,12 @@
 import React from 'react';
 import Avatar from '../ui/Avatar';
 import { formatConvoTime } from '../../utils/time';
+import { idsEqual } from '../../utils/id';
 
 export default function ConvoItem({ convo, currentUserId, isActive, unreadCount, onClick }) {
   const otherUser = convo.isGroup
     ? null
-    : convo.participants.find(p => p._id !== currentUserId);
+    : convo.participants.find(p => !idsEqual(p._id, currentUserId));
 
   const displayName = convo.isGroup ? convo.name : (otherUser?.username || 'Chat');
   const avatarSrc   = convo.isGroup

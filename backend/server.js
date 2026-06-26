@@ -5,17 +5,15 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { User, Conversation, Message } from './models.js';
 import { initSocket } from './socket.js';
+import { createOriginChecker, corsCallback } from './cors.js';
 
 dotenv.config();
 
 const app = express();
-const allowedOrigins = (process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const isOriginAllowed = createOriginChecker();
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: corsCallback(isOriginAllowed),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }));
@@ -32,6 +30,10 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/realtime-
   .catch(err => console.error('MongoDB database connection error:', err));
 
 // ------------------ API ROUTES ------------------
+
+app.get('/', (req, res) => {
+  res.json({ status: 'OK', service: 'nexus-backend' });
+});
 
 // Simple test endpoint
 app.get('/api/health', (req, res) => {
@@ -67,7 +69,7 @@ app.post('/api/users/sync', async (req, res) => {
 // List all registered users (to start chats)
 app.get('/api/users', async (req, res) => {
   try {
-    const users = await User.find({}, 'username email imageUrl isOnline lastSeen');
+    const users = await User.find({}, 'clerkId username email imageUrl isOnline lastSeen');
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch registered users list' });

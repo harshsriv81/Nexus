@@ -3,6 +3,7 @@ import MessageBubble from './MessageBubble';
 import TypingIndicator from './TypingIndicator';
 import Spinner from '../ui/Spinner';
 import { groupMessagesByDate } from '../../utils/time';
+import { idsEqual } from '../../utils/id';
 
 export default function MessageList({ messages, typingUser, isLoading, currentUserId, isGroup }) {
   const bottomRef = useRef(null);
@@ -25,7 +26,7 @@ export default function MessageList({ messages, typingUser, isLoading, currentUs
   const groups = groupMessagesByDate(messages);
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 flex flex-col">
+    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6 py-4 flex flex-col">
       {groups.map(({ dateLabel, messages: dayMsgs }) => (
         <div key={dateLabel}>
           {/* Date divider */}
@@ -39,9 +40,9 @@ export default function MessageList({ messages, typingUser, isLoading, currentUs
 
           {/* Messages */}
           {dayMsgs.map((msg, idx) => {
-            const isOutgoing  = msg.sender?._id === currentUserId;
+            const isOutgoing  = idsEqual(msg.sender?._id, currentUserId);
             const prevMsg     = dayMsgs[idx - 1];
-            const isGrouped   = prevMsg && prevMsg.sender?._id === msg.sender?._id;
+            const isGrouped   = prevMsg && idsEqual(prevMsg.sender?._id, msg.sender?._id);
             const showSender  = isGroup && !isOutgoing;
 
             return (

@@ -10,7 +10,7 @@ export default function CallControls({
   onHangup,
 }) {
   return (
-    <div className="flex items-center justify-center gap-3 md:gap-4 px-4 md:px-6 py-4 md:py-5 border-t border-border-faint bg-surface">
+    <div className="flex items-center justify-center gap-3 md:gap-4 px-4 md:px-6 py-4 md:py-5 pb-safe border-t border-border-faint bg-surface flex-shrink-0">
       {/* Mic */}
       <button
         onClick={onToggleMic}

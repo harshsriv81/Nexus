@@ -1,9 +1,25 @@
 import { useRef, useCallback, useState } from 'react';
 import { useSocket } from '../context/SocketContext';
 
+const MEDIA_CONSTRAINTS = {
+  video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+  audio: { echoCancellation: true, noiseSuppression: true },
+};
+
+/** Attach stream to a video element and ensure playback (required on iOS). */
+function attachStream(videoEl, stream) {
+  if (!videoEl || !stream) return;
+  videoEl.srcObject = stream;
+  const playPromise = videoEl.play?.();
+  if (playPromise?.catch) {
+    playPromise.catch(() => {
+      // iOS may block until user interacts; ignore benign autoplay errors
+    });
+  }
+}
+
 /**
  * Encapsulates all WebRTC peer connection logic.
- * Returns refs for video elements and control functions.
  */
 export function useWebRTC({ session, onCallConnected, onCallEnded }) {
   const { socket }         = useSocket();
@@ -11,23 +27,22 @@ export function useWebRTC({ session, onCallConnected, onCallEnded }) {
   const localStreamRef     = useRef(null);
   const remoteStreamRef    = useRef(null);
   const iceCandidateQueue  = useRef([]);
+  const ownsLocalStream    = useRef(true);
 
-  // Element refs for direct DOM access inside event handlers
   const localVideoElRef  = useRef(null);
   const remoteVideoElRef = useRef(null);
 
-  // Callback refs: auto-assign srcObject when the <video> element mounts
   const localVideoRef = useCallback((node) => {
     localVideoElRef.current = node;
     if (node && localStreamRef.current) {
-      node.srcObject = localStreamRef.current;
+      attachStream(node, localStreamRef.current);
     }
   }, []);
 
   const remoteVideoRef = useCallback((node) => {
     remoteVideoElRef.current = node;
     if (node && remoteStreamRef.current) {
-      node.srcObject = remoteStreamRef.current;
+      attachStream(node, remoteStreamRef.current);
     }
   }, []);
 
@@ -43,7 +58,6 @@ export function useWebRTC({ session, onCallConnected, onCallEnded }) {
     ],
   };
 
-  // ── Drain queued ICE candidates once remote description is set ─
   const drainIceQueue = useCallback(async () => {
     const pc = peerRef.current;
     if (!pc?.remoteDescription?.type) return;
@@ -54,7 +68,21 @@ export function useWebRTC({ session, onCallConnected, onCallEnded }) {
     }
   }, []);
 
-  // ── Shared peer setup ──────────────────────────────────────────
+  const cleanupRef = useRef(() => {});
+
+  const cleanup = useCallback(() => {
+    if (ownsLocalStream.current) {
+      localStreamRef.current?.getTracks().forEach(t => t.stop());
+    }
+    peerRef.current?.close();
+    peerRef.current         = null;
+    localStreamRef.current  = null;
+    remoteStreamRef.current = null;
+    onCallEnded?.();
+  }, [onCallEnded]);
+
+  cleanupRef.current = cleanup;
+
   const setupPeer = useCallback((stream, remoteId) => {
     const pc = new RTCPeerConnection(RTC_CONFIG);
     peerRef.current = pc;
@@ -64,9 +92,7 @@ export function useWebRTC({ session, onCallConnected, onCallEnded }) {
     pc.ontrack = (evt) => {
       if (evt.streams[0]) {
         remoteStreamRef.current = evt.streams[0];
-        if (remoteVideoElRef.current) {
-          remoteVideoElRef.current.srcObject = evt.streams[0];
-        }
+        attachStream(remoteVideoElRef.current, evt.streams[0]);
       }
     };
 
@@ -81,28 +107,34 @@ export function useWebRTC({ session, onCallConnected, onCallEnded }) {
         setCallStatus('Active Call');
         onCallConnected?.();
       }
-      if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
-        cleanup();
+      if (['failed', 'closed'].includes(pc.connectionState)) {
+        cleanupRef.current();
       }
     };
 
     return pc;
   }, [socket, onCallConnected]);
 
-  // ── Get local media ────────────────────────────────────────────
   const startLocalStream = useCallback(async () => {
+    if (session.localStream) {
+      localStreamRef.current = session.localStream;
+      ownsLocalStream.current = false;
+      attachStream(localVideoElRef.current, session.localStream);
+      return session.localStream;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia(MEDIA_CONSTRAINTS);
       localStreamRef.current = stream;
-      if (localVideoElRef.current) localVideoElRef.current.srcObject = stream;
+      ownsLocalStream.current = true;
+      attachStream(localVideoElRef.current, stream);
       return stream;
     } catch (err) {
       setCallStatus('Camera/Mic permission denied');
       throw err;
     }
-  }, []);
+  }, [session.localStream]);
 
-  // ── Outgoing call: create offer ────────────────────────────────
   const initiateCall = useCallback(async () => {
     try {
       setCallStatus('Calling...');
@@ -123,7 +155,6 @@ export function useWebRTC({ session, onCallConnected, onCallEnded }) {
     }
   }, [session, socket, setupPeer, startLocalStream]);
 
-  // ── Incoming call: accept ──────────────────────────────────────
   const acceptCall = useCallback(async () => {
     try {
       setCallStatus('Connecting...');
@@ -141,10 +172,10 @@ export function useWebRTC({ session, onCallConnected, onCallEnded }) {
       onCallConnected?.();
     } catch (err) {
       console.error('[WebRTC] acceptCall error:', err);
+      setCallStatus('Connection failed');
     }
   }, [session, socket, setupPeer, startLocalStream, drainIceQueue, onCallConnected]);
 
-  // ── Handle remote answer (for caller) ─────────────────────────
   const handleCallAccepted = useCallback(async (signal) => {
     try {
       const pc = peerRef.current;
@@ -158,7 +189,6 @@ export function useWebRTC({ session, onCallConnected, onCallEnded }) {
     }
   }, [drainIceQueue, onCallConnected]);
 
-  // ── Add remote ICE candidate ───────────────────────────────────
   const addRemoteIceCandidate = useCallback(async (candidate) => {
     const pc = peerRef.current;
     if (pc?.remoteDescription?.type) {
@@ -169,7 +199,6 @@ export function useWebRTC({ session, onCallConnected, onCallEnded }) {
     }
   }, []);
 
-  // ── Mic toggle ─────────────────────────────────────────────────
   const toggleMic = useCallback(() => {
     const track = localStreamRef.current?.getAudioTracks()[0];
     if (!track) return;
@@ -177,7 +206,6 @@ export function useWebRTC({ session, onCallConnected, onCallEnded }) {
     setMicMuted(!track.enabled);
   }, []);
 
-  // ── Camera toggle ──────────────────────────────────────────────
   const toggleCamera = useCallback(() => {
     const track = localStreamRef.current?.getVideoTracks()[0];
     if (!track) return;
@@ -185,24 +213,15 @@ export function useWebRTC({ session, onCallConnected, onCallEnded }) {
     setCameraOff(!track.enabled);
   }, []);
 
-  // ── Hang up / cleanup ──────────────────────────────────────────
   const hangup = useCallback((partnerId) => {
     socket?.emit('hangup_call', { toId: partnerId });
-    cleanup();
+    cleanupRef.current();
   }, [socket]);
 
   const decline = useCallback(() => {
     socket?.emit('decline_call', { toId: session.callerId });
-    cleanup();
+    cleanupRef.current();
   }, [socket, session]);
-
-  const cleanup = useCallback(() => {
-    localStreamRef.current?.getTracks().forEach(t => t.stop());
-    peerRef.current?.close();
-    peerRef.current        = null;
-    remoteStreamRef.current = null;
-    onCallEnded?.();
-  }, [onCallEnded]);
 
   return {
     localVideoRef,

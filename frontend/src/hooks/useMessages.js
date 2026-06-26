@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import API from '../api';
 import { useSocket } from '../context/SocketContext';
+import { idsEqual, normalizeId } from '../utils/id';
 
 /**
  * Manages message history, real-time updates, typing indicators,
@@ -13,8 +14,8 @@ export function useMessages(convoId, currentUserId) {
   const [isLoading, setIsLoading] = useState(false);
   const typingTimerRef            = useRef(null);
   const isTypingRef               = useRef(false);
+  const usernameRef                 = useRef(null);
 
-  // ── Fetch history ──────────────────────────────────────────────
   useEffect(() => {
     if (!convoId) return;
     setIsLoading(true);
@@ -26,43 +27,47 @@ export function useMessages(convoId, currentUserId) {
       .finally(() => setIsLoading(false));
   }, [convoId]);
 
-  // ── Join room + mark read ──────────────────────────────────────
   useEffect(() => {
     if (!socket || !convoId || !currentUserId) return;
-    socket.emit('join_conversation', convoId);
-    socket.emit('mark_read', { conversationId: convoId, userId: currentUserId });
+    socket.emit('join_conversation', normalizeId(convoId));
+    socket.emit('mark_read', { conversationId: normalizeId(convoId), userId: normalizeId(currentUserId) });
   }, [socket, convoId, currentUserId]);
 
-  // ── Real-time socket events ────────────────────────────────────
   useEffect(() => {
     if (!socket || !convoId) return;
+    const normalizedConvoId = normalizeId(convoId);
+    const normalizedUserId = normalizeId(currentUserId);
 
     const onReceiveMessage = (msg) => {
-      // msg.conversation may be an ObjectId string or a populated object
-      const msgConvoId = typeof msg.conversation === 'object' ? msg.conversation._id : msg.conversation;
-      if (msgConvoId !== convoId) return;
+      const msgConvoId = normalizeId(
+        typeof msg.conversation === 'object' ? msg.conversation._id : msg.conversation
+      );
+      if (msgConvoId !== normalizedConvoId) return;
       setMessages(prev => [...prev, msg]);
-      socket.emit('mark_read', { conversationId: convoId, userId: currentUserId });
+      socket.emit('mark_read', { conversationId: normalizedConvoId, userId: normalizedUserId });
     };
 
     const onTyping = ({ conversationId, username, isTyping }) => {
-      if (conversationId !== convoId) return;
+      if (normalizeId(conversationId) !== normalizedConvoId) return;
       setTypingUser(isTyping ? username : null);
     };
 
     const onMarkedRead = ({ conversationId, userId: readerId }) => {
-      if (conversationId !== convoId) return;
-      // readerId is the user who just read the messages — add them to readBy
+      if (normalizeId(conversationId) !== normalizedConvoId) return;
+      const reader = normalizeId(readerId);
       setMessages(prev =>
-        prev.map(m =>
-          m.readBy.includes(readerId) ? m : { ...m, readBy: [...m.readBy, readerId] }
-        )
+        prev.map(m => {
+          const readBy = m.readBy || [];
+          return readBy.some(id => idsEqual(id, reader))
+            ? m
+            : { ...m, readBy: [...readBy, readerId] };
+        })
       );
     };
 
     socket.on('receive_message',     onReceiveMessage);
     socket.on('typing_update',       onTyping);
-    socket.on('messages_marked_read',onMarkedRead);
+    socket.on('messages_marked_read', onMarkedRead);
 
     return () => {
       socket.off('receive_message',      onReceiveMessage);
@@ -71,34 +76,35 @@ export function useMessages(convoId, currentUserId) {
     };
   }, [socket, convoId, currentUserId]);
 
-  // ── Send message ───────────────────────────────────────────────
-  const sendMessage = useCallback((text) => {
-    if (!socket || !text.trim()) return;
-    socket.emit('send_message', {
-      conversationId: convoId,
-      senderId:       currentUserId,
-      text:           text.trim(),
-    });
-    // Stop typing
-    stopTyping();
-  }, [socket, convoId, currentUserId]);
-
-  // ── Typing signals ─────────────────────────────────────────────
-  const startTyping = useCallback((username) => {
-    if (!socket) return;
-    if (!isTypingRef.current) {
-      isTypingRef.current = true;
-      socket.emit('typing_start', { conversationId: convoId, username });
-    }
-    clearTimeout(typingTimerRef.current);
-    typingTimerRef.current = setTimeout(() => stopTyping(username), 2500);
-  }, [socket, convoId]);
-
   const stopTyping = useCallback((username) => {
     if (!socket || !isTypingRef.current) return;
     isTypingRef.current = false;
-    socket.emit('typing_stop', { conversationId: convoId, username });
+    socket.emit('typing_stop', {
+      conversationId: normalizeId(convoId),
+      username: username || usernameRef.current,
+    });
   }, [socket, convoId]);
+
+  const sendMessage = useCallback((text) => {
+    if (!socket || !text.trim()) return;
+    socket.emit('send_message', {
+      conversationId: normalizeId(convoId),
+      senderId:       normalizeId(currentUserId),
+      text:           text.trim(),
+    });
+    stopTyping();
+  }, [socket, convoId, currentUserId, stopTyping]);
+
+  const startTyping = useCallback((username) => {
+    if (!socket) return;
+    usernameRef.current = username;
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      socket.emit('typing_start', { conversationId: normalizeId(convoId), username });
+    }
+    clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => stopTyping(username), 2500);
+  }, [socket, convoId, stopTyping]);
 
   return { messages, typingUser, isLoading, sendMessage, startTyping, stopTyping };
 }

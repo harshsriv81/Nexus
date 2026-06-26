@@ -38,7 +38,7 @@ export default function AuthPage() {
       {/* ══════════════════════════════════════════════════════
           MOBILE LAYOUT — stacked, compact, scrollable
           ══════════════════════════════════════════════════════ */}
-      <div className="md:hidden relative z-10 flex flex-col items-center w-full min-h-screen px-4 py-6 overflow-y-auto">
+      <div className="md:hidden relative z-10 flex flex-col items-center w-full min-h-dvh px-4 py-6 pt-safe pb-safe overflow-y-auto overscroll-contain">
         {/* Brand — compact */}
         <div className="flex flex-col items-center gap-3 animate-fade-up text-center mb-5">
           <div className="w-12 h-12 rounded-xl bg-accent-grad flex items-center justify-center shadow-glow-sm">

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import API from '../api';
+import { getBackendConfigError } from '../config/backend';
 import { SocketProvider } from '../context/SocketContext';
 import { CallProvider, useCall } from '../context/CallContext';
 import { useSocket } from '../context/SocketContext';
@@ -9,13 +10,19 @@ import Sidebar from '../components/sidebar/Sidebar';
 import ChatPanel from '../components/chat/ChatPanel';
 import EmptyState from '../components/chat/EmptyState';
 import VideoCallModal from '../components/call/VideoCallModal';
+import DeploymentBanner from '../components/ui/DeploymentBanner';
+
+const MEDIA_CONSTRAINTS = {
+  video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+  audio: { echoCancellation: true, noiseSuppression: true },
+};
 
 /**
  * Inner dashboard — consumes contexts so it must be inside providers.
  */
-function DashboardInner({ dbUser }) {
+function DashboardInner({ dbUser, configError }) {
   const { user }                    = useUser();
-  const { socket, isConnected }     = useSocket();
+  const { socket, isConnected, connectError } = useSocket();
   const { callActive, callSession, receiveCall, endCall } = useCall();
 
   const {
@@ -26,17 +33,16 @@ function DashboardInner({ dbUser }) {
     startChat,
     createGroup,
     markConvoRead,
+    clearActiveConvo,
   } = useConversations(dbUser, user);
 
   const [activeConvo, setActiveConvo] = useState(null);
 
-  // Clear unread when a conversation is opened
   const handleSelectConvo = (convo) => {
     setActiveConvo(convo);
     if (convo?._id) markConvoRead(convo._id);
   };
 
-  // ── Listen for incoming calls globally ────────────────────────
   useEffect(() => {
     if (!socket) return;
     socket.on('call_incoming', receiveCall);
@@ -54,27 +60,34 @@ function DashboardInner({ dbUser }) {
     return convo;
   };
 
-  const handleVideoCall = (otherUser) => {
-    // Trigger outgoing call via CallContext
-    import('../context/CallContext').then(({ useCall: _ }) => {});
-    // Direct emit — initiate via context-aware modal
-    const session = {
-      isIncoming:  false,
-      callerId:    dbUser._id,
-      callerName:  dbUser.username,
-      targetId:    otherUser._id,
-      targetName:  otherUser.username,
-    };
-    // We can't call hook here — use the context instead
-    // So we expose a manual setter
+  const handleBack = () => {
+    setActiveConvo(null);
+    clearActiveConvo();
   };
 
-  // On mobile, going "back" clears active convo to show sidebar
-  const handleBack = () => setActiveConvo(null);
+  const handleVideoCall = async (otherUser) => {
+    if (!otherUser) return;
+    let localStream = null;
+    try {
+      // Must request media during the tap/click handler — iOS blocks otherwise
+      localStream = await navigator.mediaDevices.getUserMedia(MEDIA_CONSTRAINTS);
+    } catch (err) {
+      console.error('[Dashboard] camera/mic permission denied:', err);
+      return;
+    }
+    window.dispatchEvent(new CustomEvent('nexus:initcall', {
+      detail: { caller: dbUser, target: otherUser, localStream },
+    }));
+  };
 
   return (
-    <div className="flex h-dvh w-screen overflow-hidden bg-void">
-      {/* Sidebar: full-width on mobile, fixed 300px on md+ */}
+    <div className="flex flex-col h-dvh w-full max-w-[100vw] overflow-hidden bg-void">
+      <DeploymentBanner
+        configError={configError}
+        socketError={connectError}
+        isConnected={isConnected}
+      />
+      <div className="flex flex-1 min-h-0 overflow-hidden">
       <Sidebar
         dbUser={dbUser}
         isConnected={isConnected}
@@ -89,49 +102,47 @@ function DashboardInner({ dbUser }) {
         mobileHidden={!!activeConvo}
       />
 
-      {/* Chat area: full-width on mobile (hidden when no convo), flex-1 on md+ */}
       <main className={`
-        flex-1 flex overflow-hidden
-        ${activeConvo ? 'flex' : 'hidden sm:flex'}
+        flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden
+        ${activeConvo ? 'flex w-full' : 'hidden sm:flex'}
       `}>
         {activeConvo ? (
           <ChatPanel
             convo={activeConvo}
             currentUser={dbUser}
             onBack={handleBack}
-            onVideoCall={(otherUser) => {
-              // Inject into CallContext imperatively via custom event
-              window.dispatchEvent(new CustomEvent('nexus:initcall', {
-                detail: { caller: dbUser, target: otherUser }
-              }));
-            }}
+            onVideoCall={handleVideoCall}
           />
         ) : (
           <EmptyState />
         )}
       </main>
 
-      {/* ── Video call modal ───────────────────────────────────── */}
       {callActive && callSession && (
         <VideoCallModal
           session={callSession}
           onClose={endCall}
         />
       )}
+      </div>
     </div>
   );
 }
 
-/**
- * Dashboard — syncs user to DB, then wraps with SocketProvider + CallProvider.
- */
 export default function Dashboard() {
   const { user }        = useUser();
   const [dbUser, setDbUser] = useState(null);
   const [isSyncing, setIsSyncing] = useState(true);
+  const [syncError, setSyncError] = useState(null);
+  const configError = getBackendConfigError();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || configError) {
+      setIsSyncing(false);
+      return;
+    }
+    setIsSyncing(true);
+    setSyncError(null);
     API.post('/api/users/sync', {
       clerkId:  user.id,
       username: user.username || user.firstName || 'Anonymous',
@@ -139,13 +150,28 @@ export default function Dashboard() {
       imageUrl: user.imageUrl,
     })
       .then(r => setDbUser(r.data))
-      .catch(err => console.error('[Dashboard] sync error:', err))
+      .catch(err => {
+        console.error('[Dashboard] sync error:', err);
+        setSyncError(
+          err.response
+            ? `API error ${err.response.status}: check VITE_API_URL and Render logs.`
+            : 'Cannot reach backend. Set VITE_API_URL to your Render URL on Vercel and redeploy.'
+        );
+      })
       .finally(() => setIsSyncing(false));
-  }, [user]);
+  }, [user, configError]);
 
-  if (isSyncing || !dbUser) {
+  if (configError) {
     return (
-      <div className="flex h-dvh w-screen items-center justify-center bg-void">
+      <div className="flex flex-col h-dvh w-full bg-void">
+        <DeploymentBanner configError={configError} socketError={null} isConnected={false} />
+      </div>
+    );
+  }
+
+  if (isSyncing) {
+    return (
+      <div className="flex h-dvh w-full items-center justify-center bg-void">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-accent-grad flex items-center justify-center shadow-glow animate-pulse">
             <span className="text-xl">⚡</span>
@@ -156,35 +182,44 @@ export default function Dashboard() {
     );
   }
 
+  if (syncError || !dbUser) {
+    return (
+      <div className="flex flex-col h-dvh w-full bg-void">
+        <DeploymentBanner
+          configError={syncError}
+          socketError={null}
+          isConnected={false}
+        />
+      </div>
+    );
+  }
+
   return (
     <SocketProvider userId={dbUser._id}>
-      <CallProviderWithListener dbUser={dbUser} />
+      <CallProviderWithListener dbUser={dbUser} configError={null} />
     </SocketProvider>
   );
 }
 
-/**
- * Wrapper that can listen to window events to trigger calls via CallContext.
- */
-function CallProviderWithListener({ dbUser }) {
+function CallProviderWithListener({ dbUser, configError }) {
   return (
     <CallProvider>
-      <CallEventBridge dbUser={dbUser} />
+      <CallEventBridge dbUser={dbUser} configError={configError} />
     </CallProvider>
   );
 }
 
-function CallEventBridge({ dbUser }) {
+function CallEventBridge({ dbUser, configError }) {
   const { initiateCall } = useCall();
 
   useEffect(() => {
     const handler = (e) => {
-      const { caller, target } = e.detail;
-      initiateCall(caller, target);
+      const { caller, target, localStream } = e.detail;
+      initiateCall(caller, target, localStream);
     };
     window.addEventListener('nexus:initcall', handler);
     return () => window.removeEventListener('nexus:initcall', handler);
   }, [initiateCall]);
 
-  return <DashboardInner dbUser={dbUser} />;
+  return <DashboardInner dbUser={dbUser} configError={configError} />;
 }

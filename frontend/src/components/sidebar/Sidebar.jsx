@@ -5,6 +5,7 @@ import SearchBar from './SearchBar';
 import ConvoItem from './ConvoItem';
 import NewGroupModal from './NewGroupModal';
 import Spinner from '../ui/Spinner';
+import { idsEqual, normalizeId } from '../../utils/id';
 
 export default function Sidebar({
   dbUser,
@@ -26,7 +27,7 @@ export default function Sidebar({
   const filteredConvos = conversations.filter(c => {
     if (!query) return true;
     if (c.isGroup) return c.name.toLowerCase().includes(query.toLowerCase());
-    const other = c.participants.find(p => p._id !== dbUser?._id);
+    const other = c.participants.find(p => !idsEqual(p._id, dbUser?._id));
     return other?.username.toLowerCase().includes(query.toLowerCase());
   });
 
@@ -43,8 +44,8 @@ export default function Sidebar({
 
   return (
     <aside className={`
-      relative flex flex-col h-full bg-abyss border-r border-border-faint accent-bar-top
-      w-full sm:w-[300px] sm:min-w-[260px]
+      relative flex flex-col h-full min-h-0 bg-abyss border-r border-border-faint accent-bar-top
+      w-full sm:w-[300px] sm:min-w-[260px] sm:max-w-[300px]
       ${mobileHidden ? 'hidden sm:flex' : 'flex'}
     `}>
 
@@ -152,8 +153,8 @@ export default function Sidebar({
                     key={c._id}
                     convo={c}
                     currentUserId={dbUser?._id}
-                    isActive={c._id === activeConvoId}
-                    unreadCount={unreadCounts?.[c._id] || 0}
+                    isActive={idsEqual(c._id, activeConvoId)}
+                    unreadCount={unreadCounts?.[normalizeId(c._id)] || 0}
                     onClick={() => onSelectConvo(c)}
                   />
                 ))}
