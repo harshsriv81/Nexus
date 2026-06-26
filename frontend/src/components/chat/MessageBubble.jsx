@@ -9,8 +9,8 @@ export default function MessageBubble({ msg, isOutgoing, showSenderName, isGroup
   const isRead   = msg.readBy?.length > 1;
 
   return (
-    <div className={`flex flex-col max-w-[85%] md:max-w-[75%] animate-fade-up
-      ${isOutgoing ? 'self-end items-end translate-x-[50px]' : 'self-start items-start'}
+    <div className={`flex flex-col w-fit max-w-[85%] md:max-w-[75%] animate-fade-up
+      ${isOutgoing ? 'ml-auto items-end' : 'mr-auto items-start'}
       ${isGrouped ? 'mt-0.5' : 'mt-3'}
     `}>
       {/* Sender name for group chats */}
